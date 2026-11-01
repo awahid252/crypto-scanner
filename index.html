@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crypto Volatility Scanner</title>
+<style>
+:root{--bg:#fff;--fg:#1a1a1a;--mut:#667;--line:#e2e4e8;--up:#0a7d3b;--dn:#c62828;--hd:#f4f5f7}
+@media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e8e8ea;--mut:#99a;--line:#2a2e35;--up:#4cd07d;--dn:#ff6b6b;--hd:#1c1f25}}
+body{margin:0;padding:20px;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+h1{font-size:18px;margin:0}
+small,#status,.note{color:var(--mut)}
+button{font:inherit;padding:7px 14px;border:1px solid var(--line);border-radius:6px;background:var(--hd);color:var(--fg);cursor:pointer}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:780px}
+th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{background:var(--hd)}
+th:nth-child(-n+2),td:nth-child(-n+2){text-align:left}
+.up{color:var(--up)}.dn{color:var(--dn)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Crypto Volatility Scanner <small>USD pairs · high volume · every 5 min</small></h1>
+  <div><span id="status">Starting…</span> <button id="refresh">Refresh page (keep last 3 rows)</button></div>
+</header>
+<div class="wrap"><table>
+  <thead><tr><th>Time</th><th>Coin</th><th>Price</th><th>24h %</th><th>24h range %</th><th>ATR % (15m)</th><th>Vol 24h %</th><th>Vol ×</th><th>USD vol (M)</th><th>Score</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table></div>
+<p class="note">Score (0–100) = how volatile a coin is compared with the other high-volume USD coins. Vol × above 1 means volatility is expanding vs. its recent norm. Newest rows on top. Keep this tab open: it only scans while the page is open. Data: Kraken public API.</p>
+
+<script>
+// ---- settings ----
+const API = "https://api.kraken.com/0/public";   // swap for your own proxy URL if the browser blocks the request (CORS)
+const SCAN_EVERY_MS = 5 * 60 * 1000;
+const MIN_USD_VOL = 5e6;     // "high volume": at least $5M traded in 24h
+const MAX_COINS = 20;        // scan the 20 most-traded USD pairs above that
+const PER_SCAN = 5;          // rows added to the table per scan (most volatile first)
+const KEEP_ON_REFRESH = 3;
+const MAX_ROWS = 300;
+const INTERVAL = 15, W = 96; // 15-minute candles, 96 per day
+const STABLES = new Set(["USDT","USDC","DAI","PYUSD","TUSD","USDD","FDUSD","USDE","USDG","RLUSD","USD1","EURT","EURC","EUR","GBP","AUD","CAD","CHF","JPY","USD"]);
+const KEY = "volscan.rows";
+
+// ---- state ----
+let rows = [];
+try { rows = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(rows)); } catch (e) {} };
+let msg = "Starting…", scanning = false, nextAt = Date.now();
+
+// ---- helpers ----
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const mean = a => a.reduce((s, x) => s + x, 0) / a.length;
+const sd = a => { const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+const f = (x, d = 1) => Number.isFinite(x) ? x.toFixed(d) : "–";
+const fmt = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+const show = () => { $("status").textContent = scanning ? msg : `${msg} · next scan in ${fmt(Math.max(0, nextAt - Date.now()))}`; };
+const status = m => { msg = m; show(); };
+
+async function get(path) {
+  const j = await (await fetch(API + path)).json();
+  if (j.error && j.error.length) throw new Error(j.error.join(", "));
+  return j.result;
+}
+
+// ---- 1) pick the universe: USD pairs, no stablecoins, high 24h volume ----
+async function universe() {
+  const [pairs, tick] = await Promise.all([get("/AssetPairs"), get("/Ticker")]);
+  const out = [];
+  for (const [key, p] of Object.entries(pairs)) {
+    const t = tick[key];
+    if (!t || !p.wsname || !p.wsname.endsWith("/USD") || p.status !== "online" || key.endsWith(".d")) continue;
+    let coin = p.wsname.split("/")[0];
+    if (coin === "XBT") coin = "BTC";
+    if (coin === "XDG") coin = "DOGE";
+    const last = +t.c[0], hi = +t.h[1], lo = +t.l[1], usd = +t.v[1] * +t.p[1];
+    const pegged = last > 0.97 && last < 1.03 && (hi - lo) / last < 0.015;   // catches stablecoins missing from the list
+    if (STABLES.has(coin) || pegged || !(usd >= MIN_USD_VOL)) continue;
+    out.push({ pair: p.altname, coin, usd });
+  }
+  return out.sort((a, b) => b.usd - a.usd).slice(0, MAX_COINS);
+}
+
+// ---- 2) volatility metrics from 15-minute candles ----
+async function metrics(pair) {
+  const res = await get(`/OHLC?pair=${pair}&interval=${INTERVAL}`);
+  const raw = res[Object.keys(res).find(k => k !== "last")];
+  const k = raw.slice(0, -1).map(x => ({ h: +x[2], l: +x[3], c: +x[4] }));   // drop the candle still forming
+  if (k.length < W + 50) return null;
+  const n = k.length, last = k[n - 1].c, win = k.slice(-W);
+  const tr = k.slice(-14).map((x, i) => { const pc = k[n - 15 + i].c; return Math.max(x.h - x.l, Math.abs(x.h - pc), Math.abs(x.l - pc)); });
+  const ret = k.slice(1).map((x, i) => Math.log(x.c / k[i].c));
+  const scale = Math.sqrt(W) * 100, rv = sd(ret.slice(-W)) * scale, norm = sd(ret.slice(0, -W)) * scale;
+  return {
+    price: last,
+    chg: (last / k[n - 1 - W].c - 1) * 100,
+    range: (Math.max(...win.map(x => x.h)) - Math.min(...win.map(x => x.l))) / last * 100,
+    atr: mean(tr) / last * 100,
+    rv, ratio: norm > 0 ? rv / norm : NaN
+  };
+}
+
+// ---- 3) scan, rank, append to the table ----
+async function scan() {
+  if (scanning) return;
+  scanning = true;
+  nextAt = Date.now() + SCAN_EVERY_MS;
+  try {
+    status("Loading markets…");
+    const coins = await universe();
+    const got = [];
+    for (let i = 0; i < coins.length; i++) {
+      status(`Scanning ${i + 1}/${coins.length} ${coins[i].coin}…`);
+      try { const m = await metrics(coins[i].pair); if (m) got.push({ ...coins[i], ...m }); }
+      catch (e) { console.warn(coins[i].coin, e.message); }
+      await sleep(1100);   // Kraken allows about 1 public request per second
+    }
+    if (!got.length) throw new Error("no results");
+    const rank = (key, v) => got.filter(g => g[key] <= v).length / got.length;
+    got.forEach(g => g.score = 100 * mean(["atr", "rv", "range", "ratio"].map(m => rank(m, g[m]))));
+    got.sort((a, b) => b.score - a.score);
+    const t = new Date().toLocaleTimeString();
+    rows = [...got.slice(0, PER_SCAN).map(g => ({ t, coin: g.coin, price: g.price, chg: g.chg, range: g.range, atr: g.atr, rv: g.rv, ratio: g.ratio, usd: g.usd, score: g.score })), ...rows].slice(0, MAX_ROWS);
+    save(); render();
+    scanning = false; status(`Last scan ${t}`);
+  } catch (e) {
+    scanning = false;
+    status("Scan failed: " + (e instanceof TypeError ? "couldn't reach Kraken from the browser (network or CORS)" : e.message) + " — retrying next cycle");
+  }
+}
+
+function render() {
+  $("rows").innerHTML = rows.map(r => `<tr><td>${r.t}</td><td><b>${String(r.coin).replace(/[^A-Z0-9]/gi, "")}</b></td><td>${+r.price.toPrecision(6)}</td><td class="${r.chg >= 0 ? "up" : "dn"}">${f(r.chg)}</td><td>${f(r.range)}</td><td>${f(r.atr, 2)}</td><td>${f(r.rv)}</td><td>${f(r.ratio, 2)}</td><td>${f(r.usd / 1e6)}</td><td>${f(r.score, 0)}</td></tr>`).join("");
+}
+
+// Refresh: keep only the newest rows, reload the whole page; the page then scans again right away.
+$("refresh").onclick = () => { rows = rows.slice(0, KEEP_ON_REFRESH); save(); location.reload(); };
+
+render();
+scan();
+setInterval(scan, SCAN_EVERY_MS);
+setInterval(show, 1000);
+</script>
+</body>
+</html>
