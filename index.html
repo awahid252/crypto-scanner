@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Crypto Volatility Scanner</title>
+<title>Binance Crypto Scanner (BCS)</title>
+<link rel="icon" id="fav" href="data:,">
 <style>
 :root{--bg:#fff;--fg:#1a1a1a;--mut:#667;--line:#e2e4e8;--up:#0a7d3b;--dn:#c62828;--hd:#f4f5f7}
 @media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e8e8ea;--mut:#99a;--line:#2a2e35;--up:#4cd07d;--dn:#ff6b6b;--hd:#1c1f25}}
@@ -20,11 +21,17 @@ th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
 select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--hd);color:var(--fg)}
 .up{color:var(--up)}.dn{color:var(--dn)}
 tr.hot td{background:rgba(255,204,0,.28)}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{width:44px;height:44px;border-radius:10px}
+.ad{max-width:728px;min-height:90px;margin:12px auto;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:8px;color:var(--mut);font-size:12px;text-align:center;overflow:hidden}
+.ad img{max-width:100%;height:auto;display:block}
 </style>
 </head>
 <body>
+<!-- TOP AD: to use an ad network, paste its code between the tags below (or set ADS.adTop in the script) -->
+<div class="ad" id="adTop"></div>
 <header>
-  <h1>Crypto Volatility Scanner <small id="sub"></small></h1>
+  <div class="brand"><img id="logo" alt="BCS logo"><h1>Binance Crypto Scanner <small id="sub"></small></h1></div>
   <div><label>Volatility on <select id="tfsel"></select></label> <label>over last <select id="winsel"></select> candles</label> <span id="status">Starting…</span> <button id="refresh">Refresh page (keep last 3 rows)</button></div>
 </header>
 <div class="wrap"><table>
@@ -32,6 +39,9 @@ tr.hot td{background:rgba(255,204,0,.28)}
   <tbody id="rows"></tbody>
 </table></div>
 <p class="note">Pick a candle size (1 min to 1 hour): Change, Range, ATR and Vol % are measured over the last N candles of that size, where N is the candle count you choose (fewer reacts faster), and Vol % is the typical move per candle. Score (0–100) = how volatile a coin is compared with the other high-volume coins. Vol × above 1 means volatility is expanding vs. its earlier norm. Newest rows on top; a yellow row means that coin's Vol × jumped at least 1.5× versus its previous row. Keep this tab open: it only scans while the page is open. Data: Binance public API.</p>
+
+<!-- BOTTOM AD: paste your ad network's code between the tags below (or set ADS.adBottom in the script) -->
+<div class="ad" id="adBottom"></div>
 
 <script>
 // ---- settings ----
@@ -48,6 +58,22 @@ const TFS = ["1m", "5m", "15m", "30m", "1h"];   // candle sizes you can pick
 const WINS = [6, 12, 20, 30, 60];   // look-back windows you can pick, in candles (fewer = reacts faster)
 const STABLES = new Set(["USDT","USDC","DAI","PYUSD","TUSD","USDD","FDUSD","USDE","USDG","RLUSD","USD1","EURT","EURC","EUR","GBP","AUD","CAD","CHF","JPY","USD"]);
 const KEY = "volscan.rows";
+
+// Ad banners: for a direct sponsor, set an image URL (about 728×90) and the advertiser's link.
+// For an ad network, paste its code into the adTop / adBottom boxes in the HTML and leave these empty.
+const ADS = { adTop: { img: "", link: "" }, adBottom: { img: "", link: "" } };
+
+// Logo (also used as the browser-tab icon): Bitcoin coin and Ethereum diamond behind "BCS"
+const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f1b33"/><stop offset="1" stop-color="#05080f"/></linearGradient></defs>
+<rect width="64" height="64" rx="14" fill="url(#g)"/>
+<circle cx="22" cy="22" r="16" fill="#f7931a" opacity=".6"/>
+<text x="22" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="#fff" opacity=".85">B</text>
+<path d="M19.5 11v4M24.5 11v4M19.5 29v4M24.5 29v4" stroke="#fff" stroke-width="1.6" opacity=".85"/>
+<path d="M44 5 58 28 44 35 30 28Z" fill="#8c9eff" opacity=".65"/>
+<path d="M30 31 44 38 58 31 44 54Z" fill="#627eea" opacity=".65"/>
+<text x="32" y="53" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="19" font-weight="800" fill="#fff" stroke="#05080f" stroke-width="3" paint-order="stroke">BCS</text>
+</svg>`;
 
 // ---- state ----
 let rows = [];
@@ -153,6 +179,14 @@ $("sub").textContent = `Binance · ${QUOTE} pairs · high volume · every 5 min`
 const sel = $("tfsel");
 sel.innerHTML = TFS.map(x => `<option value="${x}"${x === tf ? " selected" : ""}>${x === "1h" ? "1 hour" : x.replace("m", " min")}</option>`).join("");
 sel.onchange = () => { tf = sel.value; try { localStorage.setItem("volscan.tf", tf); } catch (e) {} scan(); };
+const logoUrl = "data:image/svg+xml," + encodeURIComponent(LOGO);
+$("logo").src = logoUrl;
+$("fav").href = logoUrl;
+for (const [id, a] of Object.entries(ADS)) {
+  const box = $(id);
+  if (a.img) box.innerHTML = `<a href="${a.link || "#"}" target="_blank" rel="sponsored noopener"><img src="${a.img}" alt="Advertisement"></a>`;
+  else if (!box.innerHTML.trim()) box.textContent = "Advertisement space · 728×90";
+}
 const wsel = $("winsel");
 wsel.innerHTML = WINS.map(x => `<option value="${x}"${x === bars ? " selected" : ""}>${x}</option>`).join("");
 wsel.onchange = () => { bars = +wsel.value; try { localStorage.setItem("volscan.bars", bars); } catch (e) {} scan(); };
