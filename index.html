@@ -19,6 +19,7 @@ th{background:var(--hd)}
 th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
 select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--hd);color:var(--fg)}
 .up{color:var(--up)}.dn{color:var(--dn)}
+tr.hot td{background:rgba(255,204,0,.28)}
 </style>
 </head>
 <body>
@@ -30,7 +31,7 @@ select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6
   <thead><tr><th>Time</th><th>Coin</th><th>TF × bars</th><th>Price</th><th>Change %</th><th>Range %</th><th>ATR %</th><th>Vol %</th><th>Vol ×</th><th>24h vol (M)</th><th>Score</th></tr></thead>
   <tbody id="rows"></tbody>
 </table></div>
-<p class="note">Pick a candle size (1 min to 1 hour): Change, Range, ATR and Vol % are measured over the last N candles of that size, where N is the candle count you choose (fewer reacts faster), and Vol % is the typical move per candle. Score (0–100) = how volatile a coin is compared with the other high-volume coins. Vol × above 1 means volatility is expanding vs. its earlier norm. Newest rows on top. Keep this tab open: it only scans while the page is open. Data: Binance public API.</p>
+<p class="note">Pick a candle size (1 min to 1 hour): Change, Range, ATR and Vol % are measured over the last N candles of that size, where N is the candle count you choose (fewer reacts faster), and Vol % is the typical move per candle. Score (0–100) = how volatile a coin is compared with the other high-volume coins. Vol × above 1 means volatility is expanding vs. its earlier norm. Newest rows on top; a yellow row means that coin's Vol × jumped at least 1.5× versus its previous row. Keep this tab open: it only scans while the page is open. Data: Binance public API.</p>
 
 <script>
 // ---- settings ----
@@ -41,6 +42,7 @@ const MIN_USD_VOL = BINANCE === "us" ? 1e6 : 5e6;   // "high volume": 24h USD vo
 const MAX_COINS = 20;        // scan the 20 most-traded USD pairs above that
 const PER_SCAN = 5;          // rows added to the table per scan (most volatile first)
 const KEEP_ON_REFRESH = 3;
+const SPIKE = 1.5;   // highlight a row when its Vol × is at least 1.5× the same coin's previous row (and above 1)
 const MAX_ROWS = 300;
 const TFS = ["1m", "5m", "15m", "30m", "1h"];   // candle sizes you can pick
 const WINS = [6, 12, 20, 30, 60];   // look-back windows you can pick, in candles (fewer = reacts faster)
@@ -141,7 +143,7 @@ async function scan() {
 }
 
 function render() {
-  $("rows").innerHTML = rows.map(r => `<tr><td>${r.t}</td><td><b>${String(r.coin).replace(/[^A-Z0-9]/gi, "")}</b></td><td>${r.tf || "–"}${r.win ? " × " + r.win : ""}</td><td>${+r.price.toPrecision(6)}</td><td class="${r.chg >= 0 ? "up" : "dn"}">${f(r.chg)}</td><td>${f(r.range)}</td><td>${f(r.atr, 2)}</td><td>${f(r.rv)}</td><td>${f(r.ratio, 2)}</td><td>${f(r.usd / 1e6)}</td><td>${f(r.score, 0)}</td></tr>`).join("");
+  $("rows").innerHTML = rows.map((r, i) => { const prev = rows.slice(i + 1).find(p => p.coin === r.coin && p.tf === r.tf && p.win === r.win); const hot = prev && prev.ratio > 0 && r.ratio > 1 && r.ratio >= prev.ratio * SPIKE; return `<tr class="${hot ? "hot" : ""}"><td>${r.t}</td><td><b>${String(r.coin).replace(/[^A-Z0-9]/gi, "")}</b></td><td>${r.tf || "–"}${r.win ? " × " + r.win : ""}</td><td>${+r.price.toPrecision(6)}</td><td class="${r.chg >= 0 ? "up" : "dn"}">${f(r.chg)}</td><td>${f(r.range)}</td><td>${f(r.atr, 2)}</td><td>${f(r.rv)}</td><td>${f(r.ratio, 2)}</td><td>${f(r.usd / 1e6)}</td><td>${f(r.score, 0)}</td></tr>`; }).join("");
 }
 
 // Refresh: keep only the newest rows, reload the whole page; the page then scans again right away.
