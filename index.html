@@ -27,12 +27,23 @@ tr.hot td{background:rgba(255,204,0,.28)}
 .ad{min-height:90px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:8px;color:var(--mut);font-size:12px;text-align:center;overflow:hidden}
 @media (max-width:720px){.ads{grid-template-columns:1fr}}
 .ex{color:var(--mut);font-size:12px}
+.donate{flex-direction:column;align-items:stretch;justify-content:center;gap:4px;padding:8px 10px;text-align:left;border:1px solid var(--line);background:linear-gradient(135deg,rgba(25,211,162,.14),rgba(98,126,234,.14))}
+.donate b{font-size:13px;color:var(--fg)}
+.donate .d{display:flex;align-items:center;gap:6px;min-width:0}
+.donate .d span{flex:0 0 84px;font-weight:600;color:var(--fg)}
+.donate .d code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:11px}
+.donate button{padding:2px 8px;font-size:11px}
 .ad img{max-width:100%;height:auto;display:block}
 </style>
 </head>
 <body>
 <!-- TOP ADS (3 slots): to use an ad network, paste its code inside a box below, or set ADS.adTop1 to adTop3 in the script -->
-<div class="ads"><div class="ad" id="adTop1"></div><div class="ad" id="adTop2"></div><div class="ad" id="adTop3"></div></div>
+<div class="ads"><div class="ad" id="adTop1"></div><div class="ad donate" id="adTop2">
+  <b>☕ Enjoying the scanner? A small tip keeps it free. Thank you! 💚</b>
+  <div class="d"><span>BTC</span><code title="bc1queeqvl7qg8ppf9shsd84wuqk0j66qaetz7skx6">bc1queeqvl…z7skx6</code><button data-c="bc1queeqvl7qg8ppf9shsd84wuqk0j66qaetz7skx6">Copy</button></div>
+  <div class="d"><span>ETH</span><code title="0x9846A4c4ee264386187F2453f4505A134199B16d">0x9846A4c4…4199B16d</code><button data-c="0x9846A4c4ee264386187F2453f4505A134199B16d">Copy</button></div>
+  <div class="d"><span>USDT (TRC-20)</span><code title="TPrNLd4wzjngTBfS3h13EXX611XXi4FnPm">TPrNLd4wzj…i4FnPm</code><button data-c="TPrNLd4wzjngTBfS3h13EXX611XXi4FnPm">Copy</button></div>
+</div><div class="ad" id="adTop3"></div></div>
 <header>
   <div class="brand"><img id="logo" alt="CVR logo"><h1>Crypto Volatility Radar <small id="sub"></small></h1></div>
   <div><label>Exchange <select id="exsel"></select></label> <label>Volatility on <select id="tfsel"></select></label> <label>over last <select id="winsel"></select> candles</label> <span id="status">Starting…</span> <button id="refresh">Refresh page (keep last 3 rows)</button></div>
@@ -292,6 +303,13 @@ for (const [id, a] of Object.entries(ADS)) {
 const wsel = $("winsel");
 wsel.innerHTML = WINS.map(x => `<option value="${x}"${x === bars ? " selected" : ""}>${x}</option>`).join("");
 wsel.onchange = () => { bars = +wsel.value; try { localStorage.setItem("volscan.bars", bars); } catch (e) {} scan(); };
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-c]");
+  if (!b) return;
+  const label = b.textContent;
+  navigator.clipboard.writeText(b.dataset.c).then(() => { b.textContent = "Copied ✓"; setTimeout(() => b.textContent = label, 1500); })
+    .catch(() => prompt("Copy this address:", b.dataset.c));
+});
 render();
 scan();
 setInterval(show, 1000);
