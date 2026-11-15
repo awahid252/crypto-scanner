@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Binance Crypto Scanner (BCS)</title>
+<title>Crypto Volatility Radar (CVR)</title>
 <link rel="icon" id="fav" href="data:,">
 <style>
 :root{--bg:#fff;--fg:#1a1a1a;--mut:#667;--line:#e2e4e8;--up:#0a7d3b;--dn:#c62828;--hd:#f4f5f7}
@@ -23,33 +23,34 @@ select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6
 tr.hot td{background:rgba(255,204,0,.28)}
 .brand{display:flex;align-items:center;gap:10px}
 .brand img{width:44px;height:44px;border-radius:10px}
-.ad{max-width:728px;min-height:90px;margin:12px auto;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:8px;color:var(--mut);font-size:12px;text-align:center;overflow:hidden}
+.ads{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0}
+.ad{min-height:90px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:8px;color:var(--mut);font-size:12px;text-align:center;overflow:hidden}
+@media (max-width:720px){.ads{grid-template-columns:1fr}}
+.ex{color:var(--mut);font-size:12px}
 .ad img{max-width:100%;height:auto;display:block}
 </style>
 </head>
 <body>
-<!-- TOP AD: to use an ad network, paste its code between the tags below (or set ADS.adTop in the script) -->
-<div class="ad" id="adTop"></div>
+<!-- TOP ADS (3 slots): to use an ad network, paste its code inside a box below, or set ADS.adTop1 to adTop3 in the script -->
+<div class="ads"><div class="ad" id="adTop1"></div><div class="ad" id="adTop2"></div><div class="ad" id="adTop3"></div></div>
 <header>
-  <div class="brand"><img id="logo" alt="BCS logo"><h1>Binance Crypto Scanner <small id="sub"></small></h1></div>
-  <div><label>Volatility on <select id="tfsel"></select></label> <label>over last <select id="winsel"></select> candles</label> <span id="status">Starting…</span> <button id="refresh">Refresh page (keep last 3 rows)</button></div>
+  <div class="brand"><img id="logo" alt="CVR logo"><h1>Crypto Volatility Radar <small id="sub"></small></h1></div>
+  <div><label>Exchange <select id="exsel"></select></label> <label>Volatility on <select id="tfsel"></select></label> <label>over last <select id="winsel"></select> candles</label> <span id="status">Starting…</span> <button id="refresh">Refresh page (keep last 3 rows)</button></div>
 </header>
 <div class="wrap"><table>
   <thead><tr><th>Time</th><th>Coin</th><th>TF × bars</th><th>Price</th><th>Change %</th><th>Range %</th><th>ATR %</th><th>Vol %</th><th>Vol ×</th><th>24h vol (M)</th><th>Score</th></tr></thead>
   <tbody id="rows"></tbody>
 </table></div>
-<p class="note">Pick a candle size (1 min to 1 hour): Change, Range, ATR and Vol % are measured over the last N candles of that size, where N is the candle count you choose (fewer reacts faster), and Vol % is the typical move per candle. Score (0–100) = how volatile a coin is compared with the other high-volume coins. Vol × above 1 means volatility is expanding vs. its earlier norm. Newest rows on top; a yellow row means that coin's Vol × jumped at least 1.5× versus its previous row. Keep this tab open: it only scans while the page is open. Data: Binance public API.</p>
+<p class="note">Pick a candle size (1 min to 1 hour): Change, Range, ATR and Vol % are measured over the last N candles of that size, where N is the candle count you choose (fewer reacts faster), and Vol % is the typical move per candle. Score (0–100) = how volatile a coin is compared with the other high-volume coins. Vol × above 1 means volatility is expanding vs. its earlier norm. Newest rows on top; a yellow row means that coin's Vol × jumped at least 1.5× versus its previous row. Keep this tab open: it only scans while the page is open. Data: the selected exchange's public API.</p>
 
-<!-- BOTTOM AD: paste your ad network's code between the tags below (or set ADS.adBottom in the script) -->
-<div class="ad" id="adBottom"></div>
+<!-- BOTTOM ADS (3 slots): paste your ad network's code inside a box below, or set ADS.adBottom1 to adBottom3 in the script -->
+<div class="ads"><div class="ad" id="adBottom1"></div><div class="ad" id="adBottom2"></div><div class="ad" id="adBottom3"></div></div>
 
 <script>
 // ---- settings ----
-const BINANCE = "global";   // "global" = Binance.com (USDT pairs, its dollar-pegged quote) · "us" = Binance.US (USD pairs)
-const [HOST, QUOTE] = BINANCE === "us" ? ["https://api.binance.us", "USD"] : ["https://data-api.binance.vision", "USDT"];   // data-api.binance.vision = Binance's public market-data-only host
 const SCAN_EVERY_MS = 5 * 60 * 1000;
-const MIN_USD_VOL = BINANCE === "us" ? 1e6 : 5e6;   // "high volume": 24h USD volume ($1M on the smaller Binance.US, $5M on Binance.com)
-const MAX_COINS = 20;        // scan the 20 most-traded USD pairs above that
+// "High volume" = the minVol cutoff set for each exchange in the EX list below (24h volume, USD or USDT)
+const MAX_COINS = 20;        // scan the 20 most-traded pairs above that cutoff
 const PER_SCAN = 5;          // rows added to the table per scan (most volatile first)
 const KEEP_ON_REFRESH = 3;
 const SPIKE = 1.5;   // highlight a row when its Vol × is at least 1.5× the same coin's previous row (and above 1)
@@ -59,20 +60,18 @@ const WINS = [6, 12, 20, 30, 60];   // look-back windows you can pick, in candle
 const STABLES = new Set(["USDT","USDC","DAI","PYUSD","TUSD","USDD","FDUSD","USDE","USDG","RLUSD","USD1","EURT","EURC","EUR","GBP","AUD","CAD","CHF","JPY","USD"]);
 const KEY = "volscan.rows";
 
-// Ad banners: for a direct sponsor, set an image URL (about 728×90) and the advertiser's link.
-// For an ad network, paste its code into the adTop / adBottom boxes in the HTML and leave these empty.
-const ADS = { adTop: { img: "", link: "" }, adBottom: { img: "", link: "" } };
+// Ad banners (3 on top, 3 at the bottom): for a direct sponsor, set an image URL (about 468×60) and the advertiser's link.
+// For an ad network, paste its code into the adTop1-3 / adBottom1-3 boxes in the HTML and leave these empty.
+const ADS = Object.fromEntries(["adTop1", "adTop2", "adTop3", "adBottom1", "adBottom2", "adBottom3"].map(id => [id, { img: "", link: "" }]));
 
-// Logo (also used as the browser-tab icon): Bitcoin coin and Ethereum diamond behind "BCS"
+// Logo (also used as the browser-tab icon): a radar sweep with Bitcoin and Ethereum blips
 const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
 <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0f1b33"/><stop offset="1" stop-color="#05080f"/></linearGradient></defs>
 <rect width="64" height="64" rx="14" fill="url(#g)"/>
-<circle cx="22" cy="22" r="16" fill="#f7931a" opacity=".6"/>
-<text x="22" y="29" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="20" font-weight="700" fill="#fff" opacity=".85">B</text>
-<path d="M19.5 11v4M24.5 11v4M19.5 29v4M24.5 29v4" stroke="#fff" stroke-width="1.6" opacity=".85"/>
-<path d="M44 5 58 28 44 35 30 28Z" fill="#8c9eff" opacity=".65"/>
-<path d="M30 31 44 38 58 31 44 54Z" fill="#627eea" opacity=".65"/>
-<text x="32" y="53" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="19" font-weight="800" fill="#fff" stroke="#05080f" stroke-width="3" paint-order="stroke">BCS</text>
+<g fill="none" stroke="#19d3a2" stroke-width="1.5" opacity=".6"><circle cx="32" cy="26" r="22"/><circle cx="32" cy="26" r="14.5"/><circle cx="32" cy="26" r="7"/></g>
+<path d="M32 26 32 4A22 22 0 0 1 51 15Z" fill="#19d3a2" opacity=".35"/>
+<circle cx="40" cy="12" r="2.8" fill="#f7931a"/><circle cx="22" cy="32" r="2.8" fill="#627eea"/><circle cx="38" cy="35" r="2.4" fill="#fff"/>
+<text x="32" y="60" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="800" fill="#fff">CVR</text>
 </svg>`;
 
 // ---- state ----
@@ -80,7 +79,7 @@ let rows = [];
 try { rows = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(rows)); } catch (e) {} };
 let msg = "Starting…", scanning = false, nextAt = Date.now();
-let tf = "15m", bars = 12, again = false, timer;
+let tf = "15m", bars = 12, ex = "binance", again = false, timer;
 try { const s = localStorage.getItem("volscan.tf"); if (TFS.includes(s)) tf = s; } catch (e) {}
 try { const w = +localStorage.getItem("volscan.bars"); if (WINS.includes(w)) bars = w; } catch (e) {}
 
@@ -94,36 +93,130 @@ const fmt = ms => { const s = Math.round(ms / 1000); return Math.floor(s / 60) +
 const show = () => { $("status").textContent = scanning ? msg : `${msg} · next scan in ${fmt(Math.max(0, nextAt - Date.now()))}`; };
 const status = m => { msg = m; show(); };
 
-async function get(path) {
-  const r = await fetch(HOST + path);
+async function getJSON(url) {
+  const r = await fetch(url);
   const j = await r.json();
-  if (!r.ok) throw new Error(j.msg || "HTTP " + r.status);
+  if (!r.ok) throw new Error(j.msg || j.message || "HTTP " + r.status);
+  const bad = j.error && j.error.length ? j.error.join(", ") : j.code && !["0", "200000"].includes(String(j.code)) ? j.msg : j.retCode ? j.retMsg : "";
+  if (bad) throw new Error(bad);
   return j;
 }
+const kr = async p => (await getJSON("https://api.kraken.com/0/public" + p)).result;
+
+// ---- exchanges ----
+// Each one gives tickers() -> [{pair, coin, last, hi, lo, usd}] (24h stats) and candles(pair, tf) -> [[high, low, close]] oldest first.
+// minVol = the "high volume" cutoff (24h volume); gap = ms to wait between candle requests (rate limits).
+const binanceLike = (name, host, quote, minVol) => ({
+  name, quote, minVol,
+  async tickers() {
+    if (!this.syms) {
+      const info = await getJSON(host + "/api/v3/exchangeInfo");
+      this.syms = new Map(info.symbols.filter(s => s.status === "TRADING" && s.quoteAsset === quote).map(s => [s.symbol, s.baseAsset]));
+    }
+    return (await getJSON(host + "/api/v3/ticker/24hr")).filter(t => this.syms.has(t.symbol))
+      .map(t => ({ pair: t.symbol, coin: this.syms.get(t.symbol), last: +t.lastPrice, hi: +t.highPrice, lo: +t.lowPrice, usd: +t.quoteVolume }));
+  },
+  async candles(pair, tf) {
+    return (await getJSON(`${host}/api/v3/klines?symbol=${pair}&interval=${tf}&limit=720`)).map(x => [+x[2], +x[3], +x[4]]);
+  }
+});
+const EX = {
+  binance: binanceLike("Binance", "https://data-api.binance.vision", "USDT", 5e6),
+  binanceus: binanceLike("Binance.US", "https://api.binance.us", "USD", 1e6),
+  kraken: {
+    name: "Kraken", quote: "USD", minVol: 1e6, gap: 1100,
+    async tickers() {
+      const [pairs, tick] = await Promise.all([kr("/AssetPairs"), kr("/Ticker")]);
+      const out = [];
+      for (const [key, p] of Object.entries(pairs)) {
+        const t = tick[key];
+        if (!t || !p.wsname || !p.wsname.endsWith("/USD") || p.status !== "online" || key.endsWith(".d")) continue;
+        let coin = p.wsname.split("/")[0];
+        if (coin === "XBT") coin = "BTC";
+        if (coin === "XDG") coin = "DOGE";
+        out.push({ pair: p.altname, coin, last: +t.c[0], hi: +t.h[1], lo: +t.l[1], usd: +t.v[1] * +t.p[1] });
+      }
+      return out;
+    },
+    async candles(pair, tf) {
+      const res = await kr(`/OHLC?pair=${pair}&interval=${{ "1m": 1, "5m": 5, "15m": 15, "30m": 30, "1h": 60 }[tf]}`);
+      return res[Object.keys(res).find(k => k !== "last")].map(x => [+x[2], +x[3], +x[4]]);
+    }
+  },
+  coinbase: {
+    name: "Coinbase", quote: "USD", minVol: 2e6, gap: 150,
+    async tickers() {
+      const j = await getJSON("https://api.coinbase.com/api/v3/brokerage/market/products?product_type=SPOT");
+      return j.products.filter(p => p.quote_currency_id === "USD" && p.status === "online" && !p.is_disabled && !p.trading_disabled)
+        .map(p => ({ pair: p.product_id, coin: p.base_currency_id, last: +p.price, hi: NaN, lo: NaN, usd: +p.approximate_quote_24h_volume }));
+    },
+    async candles(pair, tf) {
+      const sec = { "1m": 60, "5m": 300, "15m": 900, "30m": 1800, "1h": 3600 }[tf], end = Math.floor(Date.now() / 1000);
+      const g = { "1m": "ONE_MINUTE", "5m": "FIVE_MINUTE", "15m": "FIFTEEN_MINUTE", "30m": "THIRTY_MINUTE", "1h": "ONE_HOUR" }[tf];
+      const j = await getJSON(`https://api.coinbase.com/api/v3/brokerage/market/products/${pair}/candles?start=${end - 300 * sec}&end=${end}&granularity=${g}&limit=300`);
+      return j.candles.slice().reverse().map(x => [+x.high, +x.low, +x.close]);
+    }
+  },
+  okx: {
+    name: "OKX", quote: "USDT", minVol: 5e6, gap: 120,
+    async tickers() {
+      const j = await getJSON("https://www.okx.com/api/v5/market/tickers?instType=SPOT");
+      return j.data.filter(t => t.instId.endsWith("-USDT")).map(t => ({ pair: t.instId, coin: t.instId.split("-")[0], last: +t.last, hi: +t.high24h, lo: +t.low24h, usd: +t.volCcy24h }));
+    },
+    async candles(pair, tf) {
+      const j = await getJSON(`https://www.okx.com/api/v5/market/candles?instId=${pair}&bar=${tf === "1h" ? "1H" : tf}&limit=300`);
+      return j.data.slice().reverse().map(x => [+x[2], +x[3], +x[4]]);
+    }
+  },
+  bybit: {
+    name: "Bybit", quote: "USDT", minVol: 5e6,
+    async tickers() {
+      const j = await getJSON("https://api.bybit.com/v5/market/tickers?category=spot");
+      return j.result.list.filter(t => t.symbol.endsWith("USDT")).map(t => ({ pair: t.symbol, coin: t.symbol.slice(0, -4), last: +t.lastPrice, hi: +t.highPrice24h, lo: +t.lowPrice24h, usd: +t.turnover24h }));
+    },
+    async candles(pair, tf) {
+      const j = await getJSON(`https://api.bybit.com/v5/market/kline?category=spot&symbol=${pair}&interval=${{ "1m": 1, "5m": 5, "15m": 15, "30m": 30, "1h": 60 }[tf]}&limit=300`);
+      return j.result.list.slice().reverse().map(x => [+x[2], +x[3], +x[4]]);
+    }
+  },
+  gate: {
+    name: "Gate.io", quote: "USDT", minVol: 5e6,
+    async tickers() {
+      const j = await getJSON("https://api.gateio.ws/api/v4/spot/tickers");
+      return j.filter(t => t.currency_pair.endsWith("_USDT")).map(t => ({ pair: t.currency_pair, coin: t.currency_pair.split("_")[0], last: +t.last, hi: +t.high_24h, lo: +t.low_24h, usd: +t.quote_volume }));
+    },
+    async candles(pair, tf) {
+      return (await getJSON(`https://api.gateio.ws/api/v4/spot/candlesticks?currency_pair=${pair}&interval=${tf}&limit=300`)).map(x => [+x[3], +x[4], +x[2]]);
+    }
+  },
+  kucoin: {
+    name: "KuCoin", quote: "USDT", minVol: 5e6,
+    async tickers() {
+      const j = await getJSON("https://api.kucoin.com/api/v1/market/allTickers");
+      return j.data.ticker.filter(t => t.symbol.endsWith("-USDT")).map(t => ({ pair: t.symbol, coin: t.symbol.split("-")[0], last: +t.last, hi: +t.high, lo: +t.low, usd: +t.volValue }));
+    },
+    async candles(pair, tf) {
+      const j = await getJSON(`https://api.kucoin.com/api/v1/market/candles?symbol=${pair}&type=${{ "1m": "1min", "5m": "5min", "15m": "15min", "30m": "30min", "1h": "1hour" }[tf]}`);
+      return j.data.slice().reverse().map(x => [+x[3], +x[4], +x[2]]);
+    }
+  }
+};
 
 // ---- 1) pick the universe: USD pairs, no stablecoins, high 24h volume ----
-let SYMBOLS = null;   // tradable spot pairs for our quote currency, loaded once
-async function universe() {
-  if (!SYMBOLS) {
-    const info = await get("/api/v3/exchangeInfo");
-    SYMBOLS = new Map(info.symbols.filter(s => s.status === "TRADING" && s.quoteAsset === QUOTE).map(s => [s.symbol, s.baseAsset]));
-  }
+async function universe(X) {
   const out = [];
-  for (const t of await get("/api/v3/ticker/24hr")) {
-    const coin = SYMBOLS.get(t.symbol);
-    if (!coin) continue;
-    const last = +t.lastPrice, usd = +t.quoteVolume;
-    const pegged = last > 0.97 && last < 1.03 && (+t.highPrice - +t.lowPrice) / last < 0.015;   // catches stablecoins missing from the list
-    if (STABLES.has(coin) || pegged || !(usd >= MIN_USD_VOL)) continue;
-    out.push({ pair: t.symbol, coin, usd });
+  for (const t of await X.tickers()) {
+    const pegged = t.last > 0.97 && t.last < 1.03 && (t.hi - t.lo) / t.last < 0.015;   // catches stablecoins missing from the list
+    if (STABLES.has(t.coin) || pegged || !(t.usd >= X.minVol)) continue;
+    out.push({ pair: t.pair, coin: t.coin, usd: t.usd });
   }
   return out.sort((a, b) => b.usd - a.usd).slice(0, MAX_COINS);
 }
 
 // ---- 2) volatility metrics from 15-minute candles ----
-async function metrics(pair, tf, W) {
-  const raw = await get(`/api/v3/klines?symbol=${pair}&interval=${tf}&limit=720`);
-  const k = raw.slice(0, -1).map(x => ({ h: +x[2], l: +x[3], c: +x[4] }));   // drop the candle still forming
+async function metrics(X, pair, tf, W) {
+  const raw = await X.candles(pair, tf);
+  const k = raw.slice(0, -1).map(x => ({ h: x[0], l: x[1], c: x[2] }));   // drop the candle still forming
   if (k.length < W + 50) return null;
   const n = k.length, last = k[n - 1].c, win = k.slice(-W);
   const m = Math.min(14, W);
@@ -143,39 +236,48 @@ async function metrics(pair, tf, W) {
 async function scan() {
   if (scanning) { again = true; return; }   // a scan is running: run another with the new setting when it ends
   scanning = true;
-  const tfNow = tf, barsNow = bars;
+  const tfNow = tf, barsNow = bars, exNow = ex, X = EX[exNow];
   clearTimeout(timer);
   timer = setTimeout(scan, SCAN_EVERY_MS);
   nextAt = Date.now() + SCAN_EVERY_MS;
   try {
     status("Loading markets…");
-    const coins = await universe();
-    status(`Scanning ${coins.length} coins…`);
-    const got = (await Promise.all(coins.map(c => metrics(c.pair, tfNow, barsNow).then(m => m && { ...c, ...m }).catch(e => { console.warn(c.coin, e.message); return null; })))).filter(Boolean);
+    const coins = await universe(X);
+    status(`Scanning ${coins.length} coins on ${X.name}…`);
+    const one = c => metrics(X, c.pair, tfNow, barsNow).then(m => m && { ...c, ...m }).catch(e => { console.warn(c.coin, e.message); return null; });
+    let got = [];
+    if (X.gap) { for (const c of coins) { got.push(await one(c)); await sleep(X.gap); } }   // exchanges with strict rate limits: one request at a time
+    else got = await Promise.all(coins.map(one));
+    got = got.filter(Boolean);
     if (!got.length) throw new Error("no results");
     const rank = (key, v) => got.filter(g => g[key] <= v).length / got.length;
     got.forEach(g => g.score = 100 * mean(["atr", "rv", "range", "ratio"].map(m => rank(m, g[m]))));
     got.sort((a, b) => b.score - a.score);
     const t = new Date().toLocaleTimeString();
-    rows = [...got.slice(0, PER_SCAN).map(g => ({ t, tf: tfNow, win: barsNow, coin: g.coin, price: g.price, chg: g.chg, range: g.range, atr: g.atr, rv: g.rv, ratio: g.ratio, usd: g.usd, score: g.score })), ...rows].slice(0, MAX_ROWS);
+    rows = [...got.slice(0, PER_SCAN).map(g => ({ t, ex: exNow, tf: tfNow, win: barsNow, coin: g.coin, price: g.price, chg: g.chg, range: g.range, atr: g.atr, rv: g.rv, ratio: g.ratio, usd: g.usd, score: g.score })), ...rows].slice(0, MAX_ROWS);
     save(); render();
     scanning = false; status(`Last scan ${t}`);
   } catch (e) {
     scanning = false;
-    status("Scan failed: " + (e instanceof TypeError ? "couldn't reach Binance from this browser (network, CORS, or a regional block)" : e.message) + " — retrying next cycle");
+    status("Scan failed: " + (e instanceof TypeError ? `couldn't reach ${X.name} from this browser (network, CORS, or a regional block)` : e.message) + " — retrying next cycle");
   } finally {
     if (again) { again = false; scan(); }
   }
 }
 
 function render() {
-  $("rows").innerHTML = rows.map((r, i) => { const prev = rows.slice(i + 1).find(p => p.coin === r.coin && p.tf === r.tf && p.win === r.win); const hot = prev && prev.ratio > 0 && r.ratio > 1 && r.ratio >= prev.ratio * SPIKE; return `<tr class="${hot ? "hot" : ""}"><td>${r.t}</td><td><b>${String(r.coin).replace(/[^A-Z0-9]/gi, "")}</b></td><td>${r.tf || "–"}${r.win ? " × " + r.win : ""}</td><td>${+r.price.toPrecision(6)}</td><td class="${r.chg >= 0 ? "up" : "dn"}">${f(r.chg)}</td><td>${f(r.range)}</td><td>${f(r.atr, 2)}</td><td>${f(r.rv)}</td><td>${f(r.ratio, 2)}</td><td>${f(r.usd / 1e6)}</td><td>${f(r.score, 0)}</td></tr>`; }).join("");
+  $("rows").innerHTML = rows.map((r, i) => { const prev = rows.slice(i + 1).find(p => p.coin === r.coin && p.tf === r.tf && p.win === r.win && p.ex === r.ex); const hot = prev && prev.ratio > 0 && r.ratio > 1 && r.ratio >= prev.ratio * SPIKE; return `<tr class="${hot ? "hot" : ""}"><td>${r.t}</td><td><b>${String(r.coin).replace(/[^A-Z0-9]/gi, "")}</b> <span class="ex">${(EX[r.ex] || {}).name || ""}</span></td><td>${r.tf || "–"}${r.win ? " × " + r.win : ""}</td><td>${+r.price.toPrecision(6)}</td><td class="${r.chg >= 0 ? "up" : "dn"}">${f(r.chg)}</td><td>${f(r.range)}</td><td>${f(r.atr, 2)}</td><td>${f(r.rv)}</td><td>${f(r.ratio, 2)}</td><td>${f(r.usd / 1e6)}</td><td>${f(r.score, 0)}</td></tr>`; }).join("");
 }
 
 // Refresh: keep only the newest rows, reload the whole page; the page then scans again right away.
 $("refresh").onclick = () => { rows = rows.slice(0, KEEP_ON_REFRESH); save(); location.reload(); };
 
-$("sub").textContent = `Binance · ${QUOTE} pairs · high volume · every 5 min`;
+try { const e = localStorage.getItem("volscan.ex"); if (e in EX) ex = e; } catch (e2) {}
+const setSub = () => { const X = EX[ex]; $("sub").textContent = `${X.name} · ${X.quote} pairs${X.quote === "USD" ? " (USD only)" : ""} · high volume · every 5 min`; };
+setSub();
+const esel = $("exsel");
+esel.innerHTML = Object.entries(EX).map(([k, v]) => `<option value="${k}"${k === ex ? " selected" : ""}>${v.name}${v.quote === "USD" ? " (USD only)" : ""}</option>`).join("");
+esel.onchange = () => { ex = esel.value; try { localStorage.setItem("volscan.ex", ex); } catch (e) {} setSub(); scan(); };
 const sel = $("tfsel");
 sel.innerHTML = TFS.map(x => `<option value="${x}"${x === tf ? " selected" : ""}>${x === "1h" ? "1 hour" : x.replace("m", " min")}</option>`).join("");
 sel.onchange = () => { tf = sel.value; try { localStorage.setItem("volscan.tf", tf); } catch (e) {} scan(); };
@@ -185,7 +287,7 @@ $("fav").href = logoUrl;
 for (const [id, a] of Object.entries(ADS)) {
   const box = $(id);
   if (a.img) box.innerHTML = `<a href="${a.link || "#"}" target="_blank" rel="sponsored noopener"><img src="${a.img}" alt="Advertisement"></a>`;
-  else if (!box.innerHTML.trim()) box.textContent = "Advertisement space · 728×90";
+  else if (!box.innerHTML.trim()) box.textContent = "Advertisement space";
 }
 const wsel = $("winsel");
 wsel.innerHTML = WINS.map(x => `<option value="${x}"${x === bars ? " selected" : ""}>${x}</option>`).join("");
