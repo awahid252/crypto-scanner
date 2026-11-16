@@ -9,7 +9,7 @@
 :root{--bg:#fff;--fg:#1a1a1a;--mut:#667;--line:#e2e4e8;--up:#0a7d3b;--dn:#c62828;--hd:#f4f5f7}
 @media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e8e8ea;--mut:#99a;--line:#2a2e35;--up:#4cd07d;--dn:#ff6b6b;--hd:#1c1f25}}
 body{margin:0;padding:20px;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,sans-serif}
-header{display:flex;flex-direction:row-reverse;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
 h1{font-size:18px;margin:0}
 small,#status,.note{color:var(--mut)}
 button{font:inherit;padding:7px 14px;border:1px solid var(--line);border-radius:6px;background:var(--hd);color:var(--fg);cursor:pointer}
@@ -21,7 +21,8 @@ th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
 select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--hd);color:var(--fg)}
 .up{color:var(--up)}.dn{color:var(--dn)}
 tr.hot td{background:rgba(255,204,0,.28)}
-.brand{display:flex;flex-direction:row-reverse;align-items:center;gap:10px;text-align:right}
+.brand{display:flex;justify-content:center;align-items:center;gap:12px;margin:4px 0 10px}
+#sub{font-size:14px;font-weight:600}
 .brand img{width:44px;height:44px;border-radius:10px}
 .ads{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0}
 .ad{min-height:90px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:8px;color:var(--mut);font-size:12px;text-align:center;overflow:hidden}
@@ -85,8 +86,9 @@ tr.hot td{background:rgba(255,204,0,.28)}
   <span class="big">Join &amp; earn <em>FREE STOCKS!</em> 🎉</span>
   <span class="cta">Claim your free stocks →</span>
 </a></div></div>
+<div class="brand"><img id="logo" alt="CVR logo"><h1>Crypto Volatility Radar</h1></div>
 <header>
-  <div class="brand"><img id="logo" alt="CVR logo"><h1>Crypto Volatility Radar <small id="sub"></small></h1></div>
+  <small id="sub"></small>
   <div><label>Exchange <select id="exsel"></select></label> <label>Volatility on <select id="tfsel"></select></label> <label>over last <select id="winsel"></select> candles</label> <span id="status">Starting…</span> <button id="refresh">Refresh page (keep last 3 rows)</button></div>
 </header>
 <div class="wrap"><table>
