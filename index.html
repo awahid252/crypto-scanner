@@ -327,11 +327,12 @@ function render() {
 $("refresh").onclick = () => { rows = rows.slice(0, KEEP_ON_REFRESH); save(); location.reload(); };
 
 try { const e = localStorage.getItem("volscan.ex"); if (e in EX) ex = e; } catch (e2) {}
+rows = rows.filter(r => r.ex === ex);   // only the selected exchange's rows are shown
 const setSub = () => { const X = EX[ex]; $("sub").textContent = `${X.name} · ${X.quote} pairs${X.quote === "USD" ? " (USD only)" : ""} · high volume · every 5 min`; };
 setSub();
 const esel = $("exsel");
 esel.innerHTML = Object.entries(EX).map(([k, v]) => `<option value="${k}"${k === ex ? " selected" : ""}>${v.name}${v.quote === "USD" ? " (USD only)" : ""}</option>`).join("");
-esel.onchange = () => { ex = esel.value; try { localStorage.setItem("volscan.ex", ex); } catch (e) {} setSub(); scan(); };
+esel.onchange = () => { ex = esel.value; try { localStorage.setItem("volscan.ex", ex); } catch (e) {} rows = []; save(); location.reload(); };
 const sel = $("tfsel");
 sel.innerHTML = TFS.map(x => `<option value="${x}"${x === tf ? " selected" : ""}>${x === "1h" ? "1 hour" : x.replace("m", " min")}</option>`).join("");
 sel.onchange = () => { tf = sel.value; try { localStorage.setItem("volscan.tf", tf); } catch (e) {} scan(); };
