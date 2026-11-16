@@ -33,17 +33,46 @@ tr.hot td{background:rgba(255,204,0,.28)}
 .donate .d span{flex:0 0 84px;font-weight:600;color:var(--fg)}
 .donate .d code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--mut);font-size:11px}
 .donate button{padding:2px 8px;font-size:11px}
+@keyframes flow{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@keyframes shine{0%{background-position:0% 0}100%{background-position:-200% 0}}
+.ad.pb{border:0}
+.promo{flex:1;align-self:stretch;display:flex;flex-direction:column;justify-content:center;gap:5px;padding:10px 14px;color:#fff;text-align:left;text-decoration:none;background-size:300% 300%;animation:flow 6s ease-in-out infinite alternate}
+.promo .row{display:flex;align-items:center;gap:8px}
+.promo small{opacity:.85;font-size:10px}
+.promo .logo{background:#fff;font-weight:900;font-size:13px;border-radius:6px;padding:1px 8px}
+.promo .big{font-size:19px;font-weight:800;line-height:1.15;text-shadow:0 2px 6px rgba(0,0,0,.35)}
+.promo .big em{font-style:normal;font-size:27px;font-weight:900;display:inline-block;text-shadow:none;background:linear-gradient(90deg,#fff,#ffe14d,#fff,#ffe14d,#fff);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 4px rgba(0,0,0,.45));animation:shine 3s linear infinite}
+.promo .cta{align-self:flex-start;background:#fff;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:800;animation:pulse 1.6s ease-in-out infinite}
+.wb{background-image:linear-gradient(120deg,#0b5fff,#00b7ff,#7a3cff,#ff3d81,#0b5fff)}
+.wb .logo,.wb .cta{color:#0b3fbf}
+.rh{background-image:linear-gradient(120deg,#031a0a,#07652a,#00c805,#07652a,#031a0a)}
+.rh .logo,.rh .cta{color:#056b1f}
+.donate{background-image:linear-gradient(120deg,#5b21b6,#be185d,#c2410c,#0f766e,#5b21b6);background-size:300% 300%;animation:flow 8s ease-in-out infinite alternate;border:0;color:#fff}
+.donate b,.donate .d span{color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.4)}
+.donate .d code{color:#fff;background:rgba(0,0,0,.28);border-radius:4px;padding:1px 6px}
+.donate button{background:#fff;color:#5b21b6;border:0;font-weight:800;cursor:pointer}
+.beat{display:inline-block;animation:pulse 1.2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.promo,.promo .big em,.promo .cta,.donate,.beat{animation:none}}
 .ad img{max-width:100%;height:auto;display:block}
 </style>
 </head>
 <body>
 <!-- TOP ADS (3 slots): to use an ad network, paste its code inside a box below, or set ADS.adTop1 to adTop3 in the script -->
-<div class="ads"><div class="ad" id="adTop1"></div><div class="ad donate" id="adTop2">
-  <b>☕ Enjoying the scanner? A small tip keeps it free. Thank you! 💚</b>
+<div class="ads"><div class="ad pb" id="adTop1"><a class="promo wb" href="https://www.webull.com/s/3Kh6ZkZpzdof7CzRKr" target="_blank" rel="sponsored noopener">
+  <span class="row"><span class="logo">Webull</span><small>Sponsored · terms apply</small></span>
+  <span class="big">Sign up &amp; earn <em>FREE SHARES!</em> 🎁</span>
+  <span class="cta">Claim your free shares →</span>
+</a></div><div class="ad donate" id="adTop2">
+  <b>☕ Enjoying the scanner? A small tip keeps it free. Thank you! <span class="beat">💚</span></b>
   <div class="d"><span>BTC</span><code title="bc1queeqvl7qg8ppf9shsd84wuqk0j66qaetz7skx6">bc1queeqvl…z7skx6</code><button data-c="bc1queeqvl7qg8ppf9shsd84wuqk0j66qaetz7skx6">Copy</button></div>
   <div class="d"><span>ETH</span><code title="0x9846A4c4ee264386187F2453f4505A134199B16d">0x9846A4c4…4199B16d</code><button data-c="0x9846A4c4ee264386187F2453f4505A134199B16d">Copy</button></div>
   <div class="d"><span>USDT (TRC-20)</span><code title="TPrNLd4wzjngTBfS3h13EXX611XXi4FnPm">TPrNLd4wzj…i4FnPm</code><button data-c="TPrNLd4wzjngTBfS3h13EXX611XXi4FnPm">Copy</button></div>
-</div><div class="ad" id="adTop3"></div></div>
+</div><div class="ad pb" id="adTop3"><a class="promo rh" href="https://join.robinhood.com/ahmeda2171" target="_blank" rel="sponsored noopener">
+  <span class="row"><span class="logo">🪶 Robinhood</span><small>Sponsored · terms apply</small></span>
+  <span class="big">Join &amp; earn <em>FREE STOCKS!</em> 🎉</span>
+  <span class="cta">Claim your free stocks →</span>
+</a></div></div>
 <header>
   <div class="brand"><img id="logo" alt="CVR logo"><h1>Crypto Volatility Radar <small id="sub"></small></h1></div>
   <div><label>Exchange <select id="exsel"></select></label> <label>Volatility on <select id="tfsel"></select></label> <label>over last <select id="winsel"></select> candles</label> <span id="status">Starting…</span> <button id="refresh">Refresh page (keep last 3 rows)</button></div>
