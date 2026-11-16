@@ -9,7 +9,7 @@
 :root{--bg:#fff;--fg:#1a1a1a;--mut:#667;--line:#e2e4e8;--up:#0a7d3b;--dn:#c62828;--hd:#f4f5f7}
 @media (prefers-color-scheme:dark){:root{--bg:#14161a;--fg:#e8e8ea;--mut:#99a;--line:#2a2e35;--up:#4cd07d;--dn:#ff6b6b;--hd:#1c1f25}}
 body{margin:0;padding:20px;background:var(--bg);color:var(--fg);font:14px/1.4 system-ui,sans-serif}
-header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
+header{display:flex;flex-direction:row-reverse;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:12px}
 h1{font-size:18px;margin:0}
 small,#status,.note{color:var(--mut)}
 button{font:inherit;padding:7px 14px;border:1px solid var(--line);border-radius:6px;background:var(--hd);color:var(--fg);cursor:pointer}
@@ -21,7 +21,7 @@ th:nth-child(-n+3),td:nth-child(-n+3){text-align:left}
 select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--hd);color:var(--fg)}
 .up{color:var(--up)}.dn{color:var(--dn)}
 tr.hot td{background:rgba(255,204,0,.28)}
-.brand{display:flex;align-items:center;gap:10px}
+.brand{display:flex;flex-direction:row-reverse;align-items:center;gap:10px;text-align:right}
 .brand img{width:44px;height:44px;border-radius:10px}
 .ads{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0}
 .ad{min-height:90px;display:flex;align-items:center;justify-content:center;border:1px dashed var(--line);border-radius:8px;color:var(--mut);font-size:12px;text-align:center;overflow:hidden}
@@ -56,8 +56,9 @@ tr.hot td{background:rgba(255,204,0,.28)}
 @media (prefers-reduced-motion:reduce){.promo,.promo .big em,.promo .cta,.donate,.beat{animation:none}}
 @keyframes scrollx{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 .ticker{overflow:hidden;white-space:nowrap;border-radius:8px;margin:0 0 10px;background:linear-gradient(90deg,#5b21b6,#be185d,#c2410c,#0f766e);color:#fff;font-size:13px;font-weight:600;line-height:26px}
-.ticker .track{display:inline-flex;animation:scrollx 40s linear infinite}
-.ticker:hover .track{animation-play-state:paused}
+.ticker{position:relative}
+.ticker .track{display:inline-flex;will-change:transform}
+.ticker .tkb{position:absolute;right:6px;top:3px;z-index:1;padding:0 9px;line-height:20px;font-size:12px;border:0;border-radius:999px;background:rgba(0,0,0,.4);color:#fff;cursor:pointer}
 .ticker .grp{display:flex;flex:none;justify-content:space-around;min-width:100vw}
 .ticker .grp span{padding:0 28px}
 @media (prefers-reduced-motion:reduce){.ticker .track{animation:none}}
@@ -65,7 +66,7 @@ tr.hot td{background:rgba(255,204,0,.28)}
 </style>
 </head>
 <body>
-<div class="ticker" aria-label="Support this free tool"><div class="track">
+<div class="ticker" aria-label="Support this free tool"><button class="tkb" id="tkb" title="Pause" aria-label="Pause or play the scrolling text">⏸</button><div class="track">
   <div class="grp"><span>☕ Enjoying the scanner? A small tip keeps it free. Thank you! 💚</span><span>🙏 Your support helps keep this scanner free and improving</span><span>💸 Tip in BTC, ETH or USDT: copy an address from the donation box below</span></div>
   <div class="grp" aria-hidden="true"><span>☕ Enjoying the scanner? A small tip keeps it free. Thank you! 💚</span><span>🙏 Your support helps keep this scanner free and improving</span><span>💸 Tip in BTC, ETH or USDT: copy an address from the donation box below</span></div>
 </div></div>
@@ -350,6 +351,18 @@ document.addEventListener("click", e => {
   navigator.clipboard.writeText(b.dataset.c).then(() => { b.textContent = "Copied ✓"; setTimeout(() => b.textContent = label, 1500); })
     .catch(() => prompt("Copy this address:", b.dataset.c));
 });
+// Scrolling donation ticker (moved with JavaScript; the button pauses/plays it, and hovering pauses it too)
+const tkEl = document.querySelector(".ticker"), tkTrack = document.querySelector(".ticker .track"), tkBtn = $("tkb");
+let tkOn = true, tkHover = false, tkX = 0, tkLast = performance.now();
+tkBtn.onclick = () => { tkOn = !tkOn; tkBtn.textContent = tkOn ? "⏸" : "▶"; tkBtn.title = tkOn ? "Pause" : "Play"; };
+tkEl.onmouseenter = () => { tkHover = true; };
+tkEl.onmouseleave = () => { tkHover = false; };
+(function tkStep(now) {
+  const dt = Math.min((now - tkLast) / 1000, 0.1);
+  tkLast = now;
+  if (tkOn && !tkHover) { tkX = (tkX + 55 * dt) % (tkTrack.scrollWidth / 2); tkTrack.style.transform = `translateX(${-tkX}px)`; }
+  requestAnimationFrame(tkStep);
+})(performance.now());
 render();
 scan();
 setInterval(show, 1000);
