@@ -54,10 +54,21 @@ tr.hot td{background:rgba(255,204,0,.28)}
 .donate button{background:#fff;color:#5b21b6;border:0;font-weight:800;cursor:pointer}
 .beat{display:inline-block;animation:pulse 1.2s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){.promo,.promo .big em,.promo .cta,.donate,.beat{animation:none}}
+@keyframes scrollx{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.ticker{overflow:hidden;white-space:nowrap;border-radius:8px;margin:0 0 10px;background:linear-gradient(90deg,#5b21b6,#be185d,#c2410c,#0f766e);color:#fff;font-size:13px;font-weight:600;line-height:26px}
+.ticker .track{display:inline-flex;animation:scrollx 40s linear infinite}
+.ticker:hover .track{animation-play-state:paused}
+.ticker .grp{display:flex;flex:none;justify-content:space-around;min-width:100vw}
+.ticker .grp span{padding:0 28px}
+@media (prefers-reduced-motion:reduce){.ticker .track{animation:none}}
 .ad img{max-width:100%;height:auto;display:block}
 </style>
 </head>
 <body>
+<div class="ticker" aria-label="Support this free tool"><div class="track">
+  <div class="grp"><span>☕ Enjoying the scanner? A small tip keeps it free. Thank you! 💚</span><span>🙏 Your support helps keep this scanner free and improving</span><span>💸 Tip in BTC, ETH or USDT: copy an address from the donation box below</span></div>
+  <div class="grp" aria-hidden="true"><span>☕ Enjoying the scanner? A small tip keeps it free. Thank you! 💚</span><span>🙏 Your support helps keep this scanner free and improving</span><span>💸 Tip in BTC, ETH or USDT: copy an address from the donation box below</span></div>
+</div></div>
 <!-- TOP ADS (3 slots): to use an ad network, paste its code inside a box below, or set ADS.adTop1 to adTop3 in the script -->
 <div class="ads"><div class="ad pb" id="adTop1"><a class="promo wb" href="https://www.webull.com/s/3Kh6ZkZpzdof7CzRKr" target="_blank" rel="sponsored noopener">
   <span class="row"><span class="logo">Webull</span><small>Sponsored · terms apply</small></span>
