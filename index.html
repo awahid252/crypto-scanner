@@ -63,6 +63,17 @@ tr.hot td{background:rgba(255,204,0,.28)}
 .ticker .grp{display:flex;flex:none;justify-content:space-around;min-width:100vw}
 .ticker .grp span{padding:0 28px}
 @media (prefers-reduced-motion:reduce){.ticker .track{animation:none}}
+.brandbar{margin:0 -20px 12px;padding:14px 20px;border-top:3px solid;border-bottom:3px solid;border-image:linear-gradient(90deg,#f7931a,#627eea,#19d3a2,#be185d,#f7931a) 1;background-color:#0b1220;background-size:100% 100%,420px 150px,100% 100%;background-repeat:no-repeat,repeat,no-repeat;box-shadow:0 0 28px rgba(98,126,234,.35)}
+.brandbar .brand{margin:0}
+.brandbar h1{color:#fff;font-size:26px;letter-spacing:.5px;text-shadow:0 2px 12px rgba(0,0,0,.6),0 0 18px rgba(98,126,234,.6)}
+.brandbar #logo{width:56px;height:56px;box-shadow:0 0 18px rgba(25,211,162,.5)}
+@keyframes flashc{0%{color:#ff4d8d}20%{color:#ffe14d}40%{color:#19d3a2}60%{color:#5ec8ff}80%{color:#b388ff}100%{color:#ff4d8d}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.45}}
+.adv{flex:1;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 12px;text-decoration:none;text-align:center;background:linear-gradient(135deg,#0b1220,#1c1450,#0b1220);cursor:pointer}
+.adv .flash{font-size:18px;font-weight:900;color:#ffe14d;animation:flashc 2.4s linear infinite,blink 1.2s ease-in-out infinite}
+.adv .sub{font-size:15px;font-weight:800;color:#fff}
+.adv .sub b{font-size:21px;color:#19d3a2;animation:flashc 2.4s linear infinite reverse,blink 1.2s ease-in-out infinite .6s}
+@media (prefers-reduced-motion:reduce){.adv .flash,.adv .sub b{animation:none}}
 .ad img{max-width:100%;height:auto;display:block}
 </style>
 </head>
@@ -86,7 +97,7 @@ tr.hot td{background:rgba(255,204,0,.28)}
   <span class="big">Join &amp; earn <em>FREE STOCKS!</em> 🎉</span>
   <span class="cta">Claim your free stocks →</span>
 </a></div></div>
-<div class="brand"><img id="logo" alt="CVR logo"><h1>Crypto Volatility Radar</h1></div>
+<div class="brandbar" id="brandbar"><div class="brand"><img id="logo" alt="CVR logo"><h1>Crypto Volatility Radar</h1></div></div>
 <header>
   <small id="sub"></small>
   <div><label>Exchange <select id="exsel"></select></label> <label>Volatility on <select id="tfsel"></select></label> <label>over last <select id="winsel"></select> candles</label> <span id="status">Starting…</span> <button id="refresh">Refresh page (keep last 3 rows)</button></div>
@@ -98,7 +109,11 @@ tr.hot td{background:rgba(255,204,0,.28)}
 <p class="note">Pick a candle size (1 min to 1 hour): Change, Range, ATR and Vol % are measured over the last N candles of that size, where N is the candle count you choose (fewer reacts faster), and Vol % is the typical move per candle. Score (0–100) = how volatile a coin is compared with the other high-volume coins. Vol × above 1 means volatility is expanding vs. its earlier norm. Newest rows on top; a yellow row means that coin's Vol × jumped at least 1.5× versus its previous row. Keep this tab open: it only scans while the page is open. Data: the selected exchange's public API.</p>
 
 <!-- BOTTOM ADS (3 slots): paste your ad network's code inside a box below, or set ADS.adBottom1 to adBottom3 in the script -->
-<div class="ads"><div class="ad" id="adBottom1"></div><div class="ad" id="adBottom2"></div><div class="ad" id="adBottom3"></div></div>
+<div class="ads">
+  <div class="ad pb" id="adBottom1"><a class="adv"><span class="flash">📢 Advertise your website here!</span><span class="sub">for as low as <b>1 USDT</b></span></a></div>
+  <div class="ad pb" id="adBottom2"><a class="adv"><span class="flash">🚀 Get your site seen by crypto traders</span><span class="sub">ads as low as <b>1 USDT</b></span></a></div>
+  <div class="ad pb" id="adBottom3"><a class="adv"><span class="flash">💰 Your ad could be right here!</span><span class="sub">from as low as <b>1 USDT</b></span></a></div>
+</div>
 
 <script>
 // ---- settings ----
@@ -127,6 +142,21 @@ const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
 <circle cx="40" cy="12" r="2.8" fill="#f7931a"/><circle cx="22" cy="32" r="2.8" fill="#627eea"/><circle cx="38" cy="35" r="2.4" fill="#fff"/>
 <text x="32" y="60" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="15" font-weight="800" fill="#fff">CVR</text>
 </svg>`;
+
+// Where advertisers should reach you, e.g. "mailto:you@example.com" or "https://t.me/yourname". Leave empty and the banners are just text.
+const AD_CONTACT = "";
+
+// Faded coin pattern for the header frame (simple stand-ins, not official logos): BTC, ETH, LTC, DOGE, SOL, XRP, BNB, USDT
+const COINS = `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="150" viewBox="0 0 420 150"><g opacity=".22" font-family="Arial,Helvetica,sans-serif" font-weight="700" text-anchor="middle" fill="#fff">
+<g transform="translate(40 40) rotate(-12)"><circle r="21" fill="#f7931a"/><text y="9" font-size="26">B</text><path d="M-4-18v5M4-18v5M-4 13v5M4 13v5" stroke="#fff" stroke-width="2"/></g>
+<g transform="translate(115 100) rotate(10)"><circle r="21" fill="#627eea"/><path d="M0-14 8 0 0 4-8 0ZM0 7 8 2 0 14-8 2Z"/></g>
+<g transform="translate(190 38) rotate(8)"><circle r="21" fill="#345d9d"/><text y="9" font-size="26">Ł</text></g>
+<g transform="translate(265 100) rotate(-10)"><circle r="21" fill="#c2a633"/><text y="9" font-size="26">Ð</text></g>
+<g transform="translate(340 38) rotate(12)"><circle r="21" fill="#9945ff"/><path d="M-11-9H9L6-4H-14ZM-9-2H11L8 3H-12ZM-11 5H9L6 10H-14Z" fill="#14f195"/></g>
+<g transform="translate(45 122) rotate(8)"><circle r="21" fill="#346aa9"/><text y="9" font-size="26">X</text></g>
+<g transform="translate(388 112) rotate(-8)"><circle r="21" fill="#f3ba2f"/><path d="M0-12 4-8 0-4-4-8ZM-9 0-5-4-1 0-5 4ZM9 0 5-4 1 0 5 4ZM0 12-4 8 0 4 4 8Z"/></g>
+<g transform="translate(270 36) rotate(-6)"><circle r="21" fill="#26a17b"/><text y="9" font-size="26">T</text></g>
+</g></svg>`;
 
 // ---- state ----
 let rows = [];
@@ -339,6 +369,9 @@ sel.onchange = () => { tf = sel.value; try { localStorage.setItem("volscan.tf", 
 const logoUrl = "data:image/svg+xml," + encodeURIComponent(LOGO);
 $("logo").src = logoUrl;
 $("fav").href = logoUrl;
+const coinsUrl = "data:image/svg+xml," + encodeURIComponent(COINS);
+$("brandbar").style.backgroundImage = `radial-gradient(ellipse at center,rgba(11,18,32,.75),rgba(11,18,32,0) 65%),url("${coinsUrl}"),linear-gradient(100deg,#0b1220,#1c1450 50%,#0b1220)`;
+document.querySelectorAll(".adv").forEach(a => { if (AD_CONTACT) { a.href = AD_CONTACT; a.target = "_blank"; a.rel = "noopener"; } else a.style.cursor = "default"; });
 for (const [id, a] of Object.entries(ADS)) {
   const box = $(id);
   if (a.img) box.innerHTML = `<a href="${a.link || "#"}" target="_blank" rel="sponsored noopener"><img src="${a.img}" alt="Advertisement"></a>`;
